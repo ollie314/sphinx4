@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.logging.Logger;
 
 /**
  * Keeps references to a list of timers which can be referenced by a key-pair consisting of an owner and a timer name.
@@ -24,9 +25,10 @@ public class TimerPool {
     /**
      * Retrieves (or creates) a timer with the given name
      *
-     * @param owner
+     * @param owner owner of the timer
      * @param timerName the name of the particular timer to retrieve. If the timer does not already exist, it will be
-     *                  created  @return the timer.
+     *                  created  
+     * @return the timer
      */
     public static synchronized Timer getTimer(Object owner, String timerName) {
         if (!weakRefTimerPool.containsKey(owner))
@@ -47,7 +49,7 @@ public class TimerPool {
     }
 
 
-    /** Returns the number of currently caches {@code Timer} instances. */
+    /** @return the number of currently caches {@code Timer} instances. */
     public static int getNumCachedTimers() {
         int counter = 0;
         for (List<Timer> timers : weakRefTimerPool.values()) {
@@ -58,33 +60,36 @@ public class TimerPool {
     }
 
 
-    /** Dump all timers */
-    public static void dumpAll() {
-        showTimesShortTitle();
+    /** 
+     * Dump all timers 
+     * @param logger the logger to use for dump
+     */
+    public static void dumpAll(Logger logger) {
+        showTimesShortTitle(logger);
 
         for (List<Timer> timers : weakRefTimerPool.values()) {
             for (Timer timer : timers) {
-                timer.dump();
+                timer.dump(logger);
             }
         }
     }
 
 
-    /** Shows the timing stats title. */
-    private static void showTimesShortTitle() {
+    /** Shows the timing stats title. 
+     * @param logger */
+    private static void showTimesShortTitle(Logger logger) {
         String title = "Timers";
         String titleBar =
                 "# ----------------------------- " + title +
                         "----------------------------------------------------------- ";
-        System.out.println(Utilities.pad(titleBar, 78));
-        System.out.print(Utilities.pad("# Name", 20) + ' ');
-        System.out.print(Utilities.pad("Count", 8));
-        System.out.print(Utilities.pad("CurTime", 10));
-        System.out.print(Utilities.pad("MinTime", 10));
-        System.out.print(Utilities.pad("MaxTime", 10));
-        System.out.print(Utilities.pad("AvgTime", 10));
-        System.out.print(Utilities.pad("TotTime", 10));
-        System.out.println();
+        logger.info(Utilities.pad(titleBar, 78));
+        logger.info(Utilities.pad("# Name", 20) + ' '
+         + Utilities.pad("Count", 8)
+         + Utilities.pad("CurTime", 10)
+         + Utilities.pad("MinTime", 10)
+         + Utilities.pad("MaxTime", 10)
+         + Utilities.pad("AvgTime", 10)
+         + Utilities.pad("TotTime", 10));
     }
 
 

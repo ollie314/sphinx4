@@ -33,13 +33,12 @@ import edu.cmu.sphinx.util.props.S4Integer;
  * there is no delay introduced by LiveCMN in general. The only real issue is an
  * initial CMN estimation, for that some amount of frames are read initially
  * and cmn estimation is calculated from them.
- * <p/>
+ * <p>
  * The properties that affect this processor are defined by the fields
  * {@link #PROP_INITIAL_CMN_WINDOW}, {@link #PROP_CMN_WINDOW}, and
  * {@link #PROP_CMN_SHIFT_WINDOW}. Please follow the link
  * "Constant Field Values" below to see the actual name of the Sphinx
  * properties.
- * <p/>
  * <p>
  * The mean of all the input cepstrum so far is not reestimated for each
  * cepstrum. This mean is recalculated after every
@@ -50,7 +49,6 @@ import edu.cmu.sphinx.util.props.S4Integer;
  * <pre>
  * cmnWindow/(cmnWindow + number of frames since the last recalculation)
  * </pre>
- * <p/>
  * 
  * @see BatchCMN
  */
@@ -64,7 +62,7 @@ public class LiveCMN extends BaseDataProcessor {
     private int initialCmnWindow;
     
     /** The property for the live CMN window size. */
-    @S4Integer(defaultValue = 100)
+    @S4Integer(defaultValue = 300)
     public static final String PROP_CMN_WINDOW = "cmnWindow";
     private int cmnWindow;
 
@@ -72,7 +70,7 @@ public class LiveCMN extends BaseDataProcessor {
      * The property for the CMN shifting window. The shifting window specifies
      * how many cepstrum after which we re-calculate the cepstral mean.
      */
-    @S4Integer(defaultValue = 160)
+    @S4Integer(defaultValue = 400)
     public static final String PROP_CMN_SHIFT_WINDOW = "shiftWindow";
     private int cmnShiftWindow; // # of Cepstrum to recalculate mean
 
@@ -80,7 +78,7 @@ public class LiveCMN extends BaseDataProcessor {
     private double[] sum; // array of current sums
     private int numberFrame; // total number of input Cepstrum
 
-    List<Data> initialList;
+    List<Data> initialList = new LinkedList<Data>();
 
     public LiveCMN(double initialMean, int cmnWindow, int cmnShiftWindow, int initialCmnWindow) {
         initLogger();
@@ -110,30 +108,30 @@ public class LiveCMN extends BaseDataProcessor {
     /**
      * Initializes the currentMean and sum arrays with the given cepstrum
      * length.
-     * 
-     * @param cepstrumLength
-     *            the length of the cepstrum
      */
     private void initMeansSums() {
         int size = -1;
-        
+
         for (Data data : initialList) {
             if (!(data instanceof DoubleData))
                 continue;
         
             double[] cepstrum = ((DoubleData) data).getValues();
-            
+
             // Initialize arrays if needed
             if (size < 0) {
                 size = cepstrum.length;
                 sum = new double[size];
                 numberFrame = 0;
             }
-            // Process
-            for (int j = 0; j < size; j++) {
-                sum[j] += cepstrum[j];
+
+            // Accumulate cepstrum, avoid counting zero energy in CMN
+            if (cepstrum[0] >= 0) {
+                for (int j = 0; j < size; j++) {
+                    sum[j] += cepstrum[j];
+                }
+                numberFrame++;
             }
-            numberFrame++;
         }
 
         // If we didn't meet any data, do nothing
@@ -159,11 +157,9 @@ public class LiveCMN extends BaseDataProcessor {
     public Data getData() throws DataProcessingException {
 
         Data input, output;
-        getTimer().start();
 
-        if (initialList == null) {
-            initialList = new LinkedList<Data>();
-            // Collect initial data for estimation
+        // Collect initial data for estimation
+        if (sum == null) {
             while (initialList.size() < initialCmnWindow) {
                 input = getPredecessor().getData();
                 initialList.add(input);
@@ -182,7 +178,6 @@ public class LiveCMN extends BaseDataProcessor {
         }
 
         normalize(output);
-        getTimer().stop();
         return output;
     }
 
@@ -190,7 +185,7 @@ public class LiveCMN extends BaseDataProcessor {
      * Normalizes the given Data with using the currentMean array. Updates the
      * sum array with the given Data.
      * 
-     * @param cepstrumObject
+     * @param data
      *            the Data object to normalize
      */
     private void normalize(Data data) {
@@ -205,12 +200,18 @@ public class LiveCMN extends BaseDataProcessor {
                     + ") not equal sum array length (" + sum.length + ')');
         }
 
+        // Accumulate cepstrum, avoid counting zero energy in CMN
+        if (cepstrum[0] >= 0) {
+            for (int j = 0; j < cepstrum.length; j++) {
+                sum[j] += cepstrum[j];
+            }
+            numberFrame++;
+        }
+        
+        // Subtract current mean
         for (int j = 0; j < cepstrum.length; j++) {
-            sum[j] += cepstrum[j];
             cepstrum[j] -= currentMean[j];
         }
-
-        numberFrame++;
 
         if (numberFrame > cmnShiftWindow) {
             

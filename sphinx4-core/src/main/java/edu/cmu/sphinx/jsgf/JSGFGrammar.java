@@ -61,7 +61,7 @@ import edu.cmu.sphinx.util.props.S4String;
  * </pre>
  * 
  * <i>Figure 1: Hello grammar that generates the sentences "Hello World". </i>
- * <p/>
+ * <p>
  * 
  * The above grammar is saved in a file called "hello.gram". It defines a public
  * grammar rule called "helloWorld". In order for this grammar rule to be
@@ -80,7 +80,7 @@ import edu.cmu.sphinx.util.props.S4String;
  * This examples shows a grammar that generates basic control commands like
  * "move a menu thanks please", "close file",
  * "oh mighty computer please kindly delete menu thanks". It is the same as one
- * of the command & control examples in the <a
+ * of the command and control examples in the <a
  * href="http://java.sun.com/products/java-media/speech/forDevelopers/JSGF/"
  * >JSGF specification </a>. It is considerably more complex than the previous
  * example. It defines the public grammar called "basicCmd".
@@ -96,7 +96,7 @@ import edu.cmu.sphinx.util.props.S4String;
  * </pre>
  * 
  * <i>Figure 2: Command grammar that generates simple control commands. </i>
- * <p/>
+ * <p>
  * 
  * The features of JSGF that are shown in this example includes:
  * <ul>
@@ -116,12 +116,12 @@ import edu.cmu.sphinx.util.props.S4String;
  * is built. Below, we show the grammar graphs created from the above JSGF
  * grammars. The nodes <code>"&lt;sil&gt;"</code> means "silence".
  * 
- * <p/>
- * <img src="doc-files/helloWorld.jpg"> <br>
+ * <p>
+ * <img alt="Hello world" src="doc-files/helloWorld.jpg"> <br>
  * 
  * <i>Figure 3: Grammar graph created from the Hello World grammar. </i>
- * <p/>
- * <img src="doc-files/commandGrammar.jpg"> <br>
+ * <p>
+ * <img alt="Command grammar" src="doc-files/commandGrammar.jpg"> <br>
  * 
  * <i>Figure 4: Grammar graph created from the Command grammar. </i>
  * 
@@ -129,7 +129,7 @@ import edu.cmu.sphinx.util.props.S4String;
  * 
  * There is a known limitation with the current JSGF support. Grammars that
  * contain non-speech loops currently cause the recognizer to hang.
- * <p/>
+ * <p>
  * For example, in the following grammar
  * 
  * <pre>
@@ -204,11 +204,13 @@ public class JSGFGrammar extends Grammar {
             Dictionary dictionary) {
         super(showGrammar, optimizeGrammar, addSilenceWords, addFillerWords,
                 dictionary);
+
+        logger = Logger.getLogger(getClass().getName());
         logMath = LogMath.getLogMath();
+
         this.baseURL = baseURL;
         this.grammarName = grammarName;
         loadGrammar = true;
-        logger = Logger.getLogger(getClass().getName());
     }
 
     public JSGFGrammar() {
@@ -225,10 +227,13 @@ public class JSGFGrammar extends Grammar {
     @Override
     public void newProperties(PropertySheet ps) throws PropertyException {
         super.newProperties(ps);
+        logger = ps.getLogger();
+        logMath = LogMath.getLogMath();
+
         baseURL = ConfigurationManagerUtils.getResource(PROP_BASE_GRAMMAR_URL,
                 ps);
-        logger = ps.getLogger();
         grammarName = ps.getString(PROP_GRAMMAR_NAME);
+
         loadGrammar = true;
     }
 
@@ -262,21 +267,23 @@ public class JSGFGrammar extends Grammar {
         baseURL = url;
     }
 
-    /** Returns the name of this grammar. */
+    /** @return the name of this grammar. */
     public String getGrammarName() {
         return grammarName;
     }
 
     /**
      * The JSGF grammar specified by grammarName will be loaded from the base
-     * url (tossing out any previously loaded grammars)
+     * URL (tossing out any previously loaded grammars)
      * 
      * @param grammarName
      *            the name of the grammar
      * @throws IOException
      *             if an error occurs while loading or compiling the grammar
      * @throws JSGFGrammarException
+     *              other grammar exception
      * @throws JSGFGrammarParseException
+     *              failed to parse grammar file
      */
     public void loadJSGF(String grammarName) throws IOException,
             JSGFGrammarParseException, JSGFGrammarException {
@@ -318,6 +325,7 @@ public class JSGFGrammar extends Grammar {
      * @param rule
      *            the Rule to parse
      * @return a grammar graph
+     * @throws JSGFGrammarException exception during parse
      */
     protected GrammarGraph processRule(JSGFRule rule) throws JSGFGrammarException {
         GrammarGraph result;
@@ -598,8 +606,9 @@ public class JSGFGrammar extends Grammar {
      * Commit changes to all loaded grammars and all changes of grammar since
      * the last commitChange
      * 
-     * @throws JSGFGrammarParseException
-     * @throws JSGFGrammarException
+     * @throws JSGFGrammarParseException parse exception occurred
+     * @throws JSGFGrammarException other exception occurred
+     * @throws IOException exception during IO
      */
     public void commitChanges() throws IOException, JSGFGrammarParseException,
             JSGFGrammarException {

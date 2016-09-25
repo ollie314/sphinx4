@@ -25,8 +25,8 @@ public class PartitionActiveListFactory extends ActiveListFactory {
 
     /**
      * 
-     * @param absoluteBeamWidth
-     * @param relativeBeamWidth
+     * @param absoluteBeamWidth beam for absolute pruning
+     * @param relativeBeamWidth beam for relative pruning
      */
     public PartitionActiveListFactory(int absoluteBeamWidth, double relativeBeamWidth) {
         super(absoluteBeamWidth, relativeBeamWidth);
@@ -64,9 +64,9 @@ public class PartitionActiveListFactory extends ActiveListFactory {
      * list, and then chopping the list up with the absolute beam width. The
      * expected run time of this partitioning algorithm is O(n), instead of O(n log n) 
      * for merge sort.
-     * <p/>
+     * <p>
      * This class is not thread safe and should only be used by a single thread.
-     * <p/>
+     * <p>
      * Note that all scores are maintained in the LogMath log base.
      */
     class PartitionActiveList implements ActiveList {
@@ -82,8 +82,9 @@ public class PartitionActiveListFactory extends ActiveListFactory {
 
 
         /** Creates an empty active list
-         * @param absoluteBeamWidth
-         * @param logRelativeBeamWidth*/
+         * @param absoluteBeamWidth beam for absolute pruning
+         * @param logRelativeBeamWidth beam for relative pruning
+         */
         public PartitionActiveList(int absoluteBeamWidth,
                                    float logRelativeBeamWidth) {
             this.absoluteBeamWidth = absoluteBeamWidth;
@@ -104,7 +105,6 @@ public class PartitionActiveListFactory extends ActiveListFactory {
         public void add(Token token) {
             if (size < tokenList.length) {
                 tokenList[size] = token;
-                token.setLocation(size);
                 size++;
             } else {
                 // token array too small, double the capacity
@@ -122,33 +122,7 @@ public class PartitionActiveListFactory extends ActiveListFactory {
             tokenList = Arrays.copyOf(tokenList, tokenList.length * 2);
         }
 
-
-        /**
-         * Replaces an old token with a new token
-         *
-         * @param oldToken the token to replace (or null in which case, replace works like add).
-         * @param newToken the new token to be placed in the list.
-         */
-        public void replace(Token oldToken, Token newToken) {
-            if (oldToken != null) {
-                int location = oldToken.getLocation();
-                // check to see if the old token is still in the list
-                if (location != -1 && tokenList[location] == oldToken) {
-                    tokenList[location] = newToken;
-                    newToken.setLocation(location);
-                    oldToken.setLocation(-1);
-                } else {
-                    add(newToken);
-                }
-            } else {
-                add(newToken);
-            }
-            if (bestToken == null || newToken.getScore() > bestToken.getScore()) {
-                bestToken = newToken;
-            }
-        }
-
-
+        
         /**
          * Purges excess members. Remove all nodes that fall below the relativeBeamWidth
          *

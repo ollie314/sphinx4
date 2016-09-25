@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 
 /**
  * A list of ActiveLists. Different token types are placed in different lists.
- * <p/>
+ * <p>
  * This class is not thread safe and should only be used by a single thread.
  */
 public class SimpleActiveListManager implements ActiveListManager {
@@ -51,9 +51,9 @@ public class SimpleActiveListManager implements ActiveListManager {
 
 
     /**
-     * 
-     * @param activeListFactories
-     * @param checkPriorLists
+     * Create a simple list manager
+     * @param activeListFactories factories
+     * @param checkPriorLists check prior lists during operation
      */
     public SimpleActiveListManager(List<ActiveListFactory> activeListFactories, boolean checkPriorLists) {
         this.logger = Logger.getLogger( getClass().getName() );
@@ -142,19 +142,6 @@ public class SimpleActiveListManager implements ActiveListManager {
      */
     private ActiveList findListFor(Token token) {
         return currentActiveLists[token.getSearchState().getOrder()];
-    }
-
-
-    /**
-     * Replaces an old token with a new token
-     *
-     * @param oldToken the token to replace (or null in which case, replace works like add).
-     * @param newToken the new token to be placed in the list.
-     */
-    public void replace(Token oldToken, Token newToken) {
-        ActiveList activeList = findListFor(oldToken);
-        assert activeList != null;
-        activeList.replace(oldToken, newToken);
     }
 
 

@@ -17,12 +17,12 @@ import static edu.cmu.sphinx.util.props.ConfigurationManagerUtils.setProperty;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URL;
 
 import edu.cmu.sphinx.frontend.frequencywarp.MelFrequencyFilterBank2;
 import edu.cmu.sphinx.frontend.util.StreamDataSource;
 import edu.cmu.sphinx.linguist.acoustic.tiedstate.Loader;
 import edu.cmu.sphinx.util.TimeFrame;
+import edu.cmu.sphinx.util.Utilities;
 import edu.cmu.sphinx.util.props.Configurable;
 import edu.cmu.sphinx.util.props.ConfigurationManager;
 
@@ -36,7 +36,7 @@ public class Context {
 
     /**
      * Constructs builder that uses default XML configuration.
-     *
+     * @param config configuration
      * @throws MalformedURLException if failed to load configuration file
      */
     public Context(Configuration config)
@@ -49,8 +49,7 @@ public class Context {
      * Constructs builder using user-supplied XML configuration.
      *
      * @param  path path to XML-resource with configuration
-     * @return      the same instance of {@link Configuration}
-     *
+     * @param  config configuration
      * @throws MalformedURLException if failed to load configuration file
      * @throws IOException           if failed to load configuration file
      */
@@ -87,7 +86,7 @@ public class Context {
      */
     public void setAcousticModel(String path) throws IOException {
         setLocalProperty("acousticModelLoader->location", path);
-        setLocalProperty("dictionary->fillerPath", path + "/noisedict");
+        setLocalProperty("dictionary->fillerPath", Utilities.pathJoin(path, "noisedict"));
     }
 
     /**
@@ -135,10 +134,10 @@ public class Context {
      * Sets path to the language model.
      *
      * Enables probabilistic language model and disables static grammar.
-     * Currently it supports ".lm" and ".dmp" file formats.
+     * Currently it supports ".lm", ".dmp" and ".bin" file formats.
      *
      * @param  path path to the language model file
-     * @see         Context#setGrammar(String)
+     * @see   Context#setGrammar(String, String)
      *
      * @throws IllegalArgumentException if path ends with unsupported extension
      */
@@ -151,38 +150,31 @@ public class Context {
             setLocalProperty("largeTrigramModel->location", path);
             setLocalProperty(
                 "lexTreeLinguist->languageModel", "largeTrigramModel");
+        } else if (path.endsWith(".bin")) {
+            setLocalProperty("trieNgramModel->location", path);
+            setLocalProperty(
+                "lexTreeLinguist->languageModel", "trieNgramModel");
         } else {
             throw new IllegalArgumentException(
                 "Unknown format extension: " + path);
         }
-        setLocalProperty("decoder->searchManager", "wordPruningSearchManager");
+        //search manager for LVCSR is set by deafult
     }
 
 
     public void setSpeechSource(InputStream stream, TimeFrame timeFrame) {
         getInstance(StreamDataSource.class).setInputStream(stream, timeFrame);
-        setLocalProperty("threadedScorer->frontend", "liveFrontEnd");
+        setLocalProperty("trivialScorer->frontend", "liveFrontEnd");
     }
 
     /**
      * Sets byte stream as the speech source.
      *
-     * @param  stream stream
-     * @see           Context#useMicrophone()
+     * @param  stream stream to process
      */
     public void setSpeechSource(InputStream stream) {
-        // TODO: setup stream sample rate and other parameters
         getInstance(StreamDataSource.class).setInputStream(stream);
-        setLocalProperty("threadedScorer->frontend", "liveFrontEnd");
-    }
-
-    /**
-     * Sets batch frontend to process whole file.
-     *
-     * @see    Context#setSpeechSource(URL)
-     */
-    public void processBatch() {
-        setLocalProperty("threadedScorer->frontend", "batchFrontEnd");
+        setLocalProperty("trivialScorer->frontend", "liveFrontEnd");
     }
 
     /**
@@ -217,7 +209,8 @@ public class Context {
      * Returns instance of the XML configuration by its class.
      *
      * @param  clazz class to look up
-     * @return       instance of the specified class or null
+     * @param  <C> generic
+     * @return instance of the specified class or null
      */
     public <C extends Configurable> C getInstance(Class<C> clazz) {
         return configurationManager.lookup(clazz);

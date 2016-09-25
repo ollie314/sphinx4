@@ -20,7 +20,7 @@ import org.testng.annotations.Test;
 import edu.cmu.sphinx.linguist.WordSequence;
 import edu.cmu.sphinx.linguist.acoustic.UnitManager;
 import edu.cmu.sphinx.linguist.dictionary.Dictionary;
-import edu.cmu.sphinx.linguist.dictionary.FullDictionary;
+import edu.cmu.sphinx.linguist.dictionary.TextDictionary;
 import edu.cmu.sphinx.linguist.dictionary.Word;
 
 
@@ -30,15 +30,12 @@ public class LargeNgramTest {
     public void testNgram() throws IOException {
         URL dictUrl = getClass().getResource("100.dict");
         URL noisedictUrl = getClass()
-                .getResource("/edu/cmu/sphinx/models/acoustic/wsj/noisedict");
+                .getResource("/edu/cmu/sphinx/models/en-us/en-us/noisedict");
 
-        Dictionary dictionary = new FullDictionary(dictUrl,
+        Dictionary dictionary = new TextDictionary(dictUrl,
                                                    noisedictUrl,
                                                    null,
-                                                   false,
                                                    null,
-                                                   false,
-                                                   false,
                                                    new UnitManager());
 
         URL lm = getClass().getResource("100.arpa.dmp");

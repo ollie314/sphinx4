@@ -23,7 +23,7 @@ import java.util.Arrays;
  * shared by a number of {@link GaussianMixture GaussianMixtures}, these elements should not be
  * written to. The GaussianMixture defines a single probability density function along with a set of
  * adaptation parameters.
- * <p/>
+ * <p>
  * Note that all scores and weights are in LogMath log base
  */
 // TODO: Since many of the subcomponents of a MixtureComponent are shared, are 
@@ -34,25 +34,23 @@ public class MixtureComponent implements Cloneable, Serializable {
 
     private float[] mean;
     /** Mean after transformed by the adaptation parameters. */
-    private float[] meanTransformed;
+    protected float[] meanTransformed;
     private float[][] meanTransformationMatrix;
     private float[] meanTransformationVector;
     private float[] variance;
     /** Precision is the inverse of the variance. This includes adaptation. */
-    private float[] precisionTransformed;
+    protected float[] precisionTransformed;
     private float[][] varianceTransformationMatrix;
     private float[] varianceTransformationVector;
 
-    private float distFloor;
+    protected float distFloor;
     private float varianceFloor;
 
     public static final float DEFAULT_VAR_FLOOR = 0.0001f; // this also seems to be the default of SphinxTrain
     public static final float DEFAULT_DIST_FLOOR = 0.0f;
 
-    private float logPreComputedGaussianFactor;
-    private LogMath logMath;
-
-
+    protected float logPreComputedGaussianFactor;
+    
     /**
      * Create a MixtureComponent with the given sub components.
      *
@@ -110,7 +108,6 @@ public class MixtureComponent implements Cloneable, Serializable {
 
         assert variance.length == mean.length;
 
-        logMath = LogMath.getLogMath();
         this.mean = mean;
         this.meanTransformationMatrix = meanTransformationMatrix;
         this.meanTransformationVector = meanTransformationVector;
@@ -119,7 +116,7 @@ public class MixtureComponent implements Cloneable, Serializable {
         this.varianceTransformationVector = varianceTransformationVector;
 
         assert distFloor >= 0.0 : "distFloot seems to be already in log-domain";
-        this.distFloor = logMath.linearToLog(distFloor);
+        this.distFloor = LogMath.getLogMath().linearToLog(distFloor);
         this.varianceFloor = varianceFloor;
 
         transformStats();
@@ -150,7 +147,7 @@ public class MixtureComponent implements Cloneable, Serializable {
 
     /**
      * Calculate the score for this mixture against the given feature.
-     * <p/>
+     * <p>
      * Note: The support of <code>DoubleData</code>-features would require an array conversion to
      * float[]. Because getScore might be invoked with very high frequency, features are restricted
      * to be <code>FloatData</code>s.
@@ -166,9 +163,9 @@ public class MixtureComponent implements Cloneable, Serializable {
     /**
      * Calculate the score for this mixture against the given feature. We model the output
      * distributions using a mixture of Gaussians, therefore the current implementation is simply
-     * the computation of a multi-dimensional Gaussian. <p/> <p><b>Normal(x) = exp{-0.5 * (x-m)' *
+     * the computation of a multi-dimensional Gaussian. <p> <b>Normal(x) = exp{-0.5 * (x-m)' *
      * inv(Var) * (x-m)} / {sqrt((2 * PI) ^ N) * det(Var))}</b></p>
-     * <p/>
+     * <p>
      * where <b>x</b> and <b>m</b> are the incoming cepstra and mean vector respectively,
      * <b>Var</b> is the Covariance matrix, <b>det()</b> is the determinant of a matrix,
      * <b>inv()</b> is its inverse, <b>exp</b> is the exponential operator, <b>x'</b> is the
@@ -179,8 +176,7 @@ public class MixtureComponent implements Cloneable, Serializable {
      * @return the score, in log, for the given feature
      */
     public float getScore(float[] feature) {
-        // float logVal = 0.0f;
-        float logDval = 0.0f;
+        float logDval = logPreComputedGaussianFactor;
 
         // First, compute the argument of the exponential function in
         // the definition of the Gaussian, then convert it to the
@@ -197,10 +193,7 @@ public class MixtureComponent implements Cloneable, Serializable {
         // the argument of the exponential in the javadoc comment.
 
         // Convert to the appropriate base.
-        logDval = logMath.lnToLog(logDval);
-
-        // Add the precomputed factor, with the appropriate sign.
-        logDval -= logPreComputedGaussianFactor;
+        logDval = LogMath.getLogMath().lnToLog(logDval);
 
         // System.out.println("MC: getscore " + logDval);
 
@@ -224,20 +217,21 @@ public class MixtureComponent implements Cloneable, Serializable {
      * computation can be carried out in advance. Specifically, the factor containing only variance
      * in the Gaussian can be computed in advance, keeping in mind that the the determinant of the
      * covariance matrix, for the degenerate case of a mixture with independent components - only
-     * the diagonal elements are non-zero - is simply the product of the diagonal elements. <p/>
-     * We're computing the expression: <p/> <p><b>{sqrt((2 * PI) ^ N) * det(Var))}</b></p>
+     * the diagonal elements are non-zero - is simply the product of the diagonal elements. <p>
+     * We're computing the expression: 
+     * <pre>{sqrt((2 * PI) ^ N) * det(Var))}</pre>
      *
      * @return the precomputed distance
      */
     public float precomputeDistance() {
-        float logPreComputedGaussianFactor = 0.0f; // = log(1.0)
+        double logPreComputedGaussianFactor = 0.0; // = log(1.0)
         // Compute the product of the elements in the Covariance
         // matrix's main diagonal. Covariance matrix is assumed
         // diagonal - independent dimensions. In log, the product
         // becomes a summation.
         for (int i = 0; i < variance.length; i++) {
             logPreComputedGaussianFactor +=
-                    logMath.linearToLog(precisionTransformed[i] * -2);
+                    Math.log(precisionTransformed[i] * -2);
             //	     variance[i] = 1.0f / (variance[i] * 2.0f);
         }
 
@@ -249,11 +243,11 @@ public class MixtureComponent implements Cloneable, Serializable {
         // The covariance matrix's dimension becomes a multiplicative
         // factor in log scale.
         logPreComputedGaussianFactor =
-                logMath.linearToLog(2.0 * Math.PI) * variance.length
+                Math.log(2.0 * Math.PI) * variance.length
                         - logPreComputedGaussianFactor;
 
         // The sqrt above is a 0.5 multiplicative factor in log scale.
-        return logPreComputedGaussianFactor * 0.5f;
+        return -(float)logPreComputedGaussianFactor * 0.5f;
     }
 
 

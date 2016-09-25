@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 
 import edu.cmu.sphinx.linguist.acoustic.UnitManager;
 import edu.cmu.sphinx.linguist.dictionary.Dictionary;
-import edu.cmu.sphinx.linguist.dictionary.FullDictionary;
+import edu.cmu.sphinx.linguist.dictionary.TextDictionary;
 import edu.cmu.sphinx.linguist.dictionary.Word;
 
 public class WordSequenceTest {
@@ -24,14 +24,14 @@ public class WordSequenceTest {
         URL dictUrl =
                 getClass()
                         .getResource(
-                                "/edu/cmu/sphinx/models/acoustic/wsj/dict/digits.dict");
+                                "/edu/cmu/sphinx/models/en-us/cmudict-en-us.dict");
         URL noiseDictUrl =
                 getClass().getResource(
-                        "/edu/cmu/sphinx/models/acoustic/wsj/noisedict");
+                        "/edu/cmu/sphinx/models/en-us/en-us/noisedict");
 
         dictionary =
-                new FullDictionary(dictUrl, noiseDictUrl, null, false, null,
-                        false, false, new UnitManager());
+                new TextDictionary(dictUrl, noiseDictUrl, null, null,
+                                   new UnitManager());
         dictionary.allocate();
     }
 

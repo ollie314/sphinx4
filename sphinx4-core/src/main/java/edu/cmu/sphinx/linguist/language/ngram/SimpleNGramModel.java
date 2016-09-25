@@ -32,13 +32,13 @@ import edu.cmu.sphinx.util.props.PropertySheet;
 /**
  * An ASCII ARPA language model loader. This loader makes no attempt to
  * optimize storage, so it can only load very small language models
- * <p/>
+ * <p>
  * Note that all probabilities in the grammar are stored in LogMath log base
  * format. Language Probabilities in the language model file are stored in log
  * 10 base.
  */
 
-public class SimpleNGramModel implements BackoffLanguageModel {
+public class SimpleNGramModel implements LanguageModel {
 
     // ----------------------------
     // Configuration data
@@ -164,13 +164,6 @@ public class SimpleNGramModel implements BackoffLanguageModel {
     }
 
     /**
-     * Dummy implementation for backoff
-     */
-    public ProbDepth getProbDepth(WordSequence sequence) {
-        return new ProbDepth(getProbability(sequence), desiredMaxDepth);
-    }
-
-    /**
      * Gets the smear term for the given wordSequence
      *
      * @param wordSequence the word sequence
@@ -211,6 +204,11 @@ public class SimpleNGramModel implements BackoffLanguageModel {
      */
     public Set<String> getVocabulary() {
         return Collections.unmodifiableSet(vocabulary);
+    }
+
+    @Override
+    public void onUtteranceEnd() {
+        //TODO not implemented
     }
 
     /**
@@ -369,7 +367,7 @@ public class SimpleNGramModel implements BackoffLanguageModel {
      * Returns a list of all the word sequences in the language model This
      * method is used to create Finite State Transducers of the language model.
      *
-     * @return LinkedList<WordSequence> containing all the word sequences
+     * @return List containing all the word sequences
      */
     public LinkedList<WordSequence> getNGrams() {
         return tokens;

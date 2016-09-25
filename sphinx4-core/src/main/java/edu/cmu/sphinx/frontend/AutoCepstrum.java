@@ -83,7 +83,7 @@ public class AutoCepstrum extends BaseDataProcessor {
     /**
      * The lifter component which could be used for creating the cepstrum. The
      * lifter component is inserted in the pipeline only if
-     * "-lifter <lifterValue>" is specified in the feat.params file of the
+     * "-lifter &lt;lifterValue&gt;" is specified in the feat.params file of the
      * target acoustic model.
      */
     protected Lifter lifter;
@@ -144,8 +144,8 @@ public class AutoCepstrum extends BaseDataProcessor {
 
             selectedDataProcessors.add(filterBank);
 
-            if ((featParams.get("-remove_noise") != null)
-                    && (featParams.get("-remove_noise").equals("yes"))) {
+            if ((featParams.get("-remove_noise") == null)
+                    || (featParams.get("-remove_noise").equals("yes"))) {
                 denoise = new Denoise(Denoise.class.getField("LAMBDA_POWER")
                                               .getAnnotation(S4Double.class)
                                               .defaultValue(),
@@ -159,10 +159,6 @@ public class AutoCepstrum extends BaseDataProcessor {
                                               .getAnnotation(S4Double.class)
                                               .defaultValue(),
                                       Denoise.class.getField("MU_T")
-                                              .getAnnotation(S4Double.class)
-                                              .defaultValue(),
-                                      Denoise.class
-                                              .getField("EXCITATION_THRESHOLD")
                                               .getAnnotation(S4Double.class)
                                               .defaultValue(),
                                       Denoise.class.getField("MAX_GAIN")
@@ -260,8 +256,8 @@ public class AutoCepstrum extends BaseDataProcessor {
 
     /**
      * Returns a description of this Cepstrum component in the format:
-     * <cepstrum name> {<DataProcessor1>, <DataProcessor2> ...
-     * <DataProcessorN>}
+     * &lt;cepstrum name&gt; {&lt;DataProcessor1&gt;, &lt;DataProcessor2&gt; ...
+     * &lt;DataProcessorN&gt;}
      * 
      * @return a description of this Cepstrum
      */

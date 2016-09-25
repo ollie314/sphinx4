@@ -15,6 +15,7 @@ package edu.cmu.sphinx.decoder.search;
 import edu.cmu.sphinx.decoder.scorer.Scoreable;
 import edu.cmu.sphinx.decoder.scorer.ScoreProvider;
 import edu.cmu.sphinx.frontend.Data;
+import edu.cmu.sphinx.frontend.FloatData;
 import edu.cmu.sphinx.linguist.HMMSearchState;
 import edu.cmu.sphinx.linguist.SearchState;
 import edu.cmu.sphinx.linguist.UnitSearchState;
@@ -29,10 +30,9 @@ import java.util.*;
 /**
  * Represents a single state in the recognition trellis. Subclasses of a token are used to represent the various
  * emitting state.
- * <p/>
+ * <p>
  * All scores are maintained in LogMath log base
  */
-@SuppressWarnings("serial")
 public class Token implements Scoreable {
 
     private static int curCount;
@@ -40,25 +40,17 @@ public class Token implements Scoreable {
     private static final DecimalFormat scoreFmt = new DecimalFormat("0.0000000E00");
     private static final DecimalFormat numFmt = new DecimalFormat("0000");
 
-    private final Token predecessor;
+    private Token predecessor;
 
-    private final float logLanguageScore;
+    private float logLanguageScore;
     private float logTotalScore;
     private float logInsertionScore;
     private float logAcousticScore;
-    private float logWorkingScore;
     
-    private final SearchState searchState;
+    private SearchState searchState;
 
-    private int location;
-    private final int frameNumber;
-    private Data myData;
-
-    /**
-     * A collection of arbitrary properties assigned to this token. This field becomes lazy initialized to reduce
-     * memory footprint.
-     */
-    private HashMap<String, Object> tokenProps;
+    private long collectTime;
+    private Data data;
 
     /**
      * Internal constructor for a token. Used by classes Token, CombineToken, ParallelToken
@@ -66,22 +58,22 @@ public class Token implements Scoreable {
      * @param predecessor             the predecessor for this token
      * @param state                   the SentenceHMMState associated with this token
      * @param logTotalScore           the total entry score for this token (in LogMath log base)
+     * @param logInsertionScore       the insertion score associated with this token (in LogMath log base)
      * @param logLanguageScore        the language score associated with this token (in LogMath log base)
-     * @param frameNumber             the frame number associated with this token
+     * @param collectTime             the frame collection time
      */
     public Token(Token predecessor,
                  SearchState state,
                  float logTotalScore,
                  float logInsertionScore,
                  float logLanguageScore,                 
-                 int frameNumber) {
+                 long collectTime) {
         this.predecessor = predecessor;
         this.searchState = state;
         this.logTotalScore = logTotalScore;
         this.logInsertionScore = logInsertionScore;
         this.logLanguageScore = logLanguageScore;
-        this.frameNumber = frameNumber;
-        this.location = -1;
+        this.collectTime = collectTime;
         curCount++;
     }
 
@@ -90,19 +82,21 @@ public class Token implements Scoreable {
      * Creates the initial token with the given word history depth
      *
      * @param state       the SearchState associated with this token
-     * @param frameNumber the frame number for this token
+     * @param collectTime collection time of this token
      */
-    public Token(SearchState state, int frameNumber) {
-        this(null, state, 0.0f, 0.0f, 0.0f, frameNumber);
+    public Token(SearchState state, long collectTime) {
+        this(null, state, 0.0f, 0.0f, 0.0f, collectTime);
     }
 
 
     /**
      * Creates a Token with the given acoustic and language scores and predecessor.
      *
+     * @param predecessor previous token
+     * @param logTotalScore total score
      * @param logAcousticScore the log acoustic score
+     * @param logInsertionScore the log insertion score
      * @param logLanguageScore the log language score
-     * @param predecessor      the predecessor Token
      */
     public Token(Token predecessor,
                  float logTotalScore, 
@@ -125,21 +119,23 @@ public class Token implements Scoreable {
 
 
     /**
-     * Returns the frame number for this token. Note that for tokens that are associated with non-emitting states, the
-     * frame number represents the next frame number.  For emitting states, the frame number represents the current
-     * frame number.
-     *
-     * @return the frame number for this token
+     * Collect time is different from frame number because some frames might be skipped in silence detector
+     * 
+     * @return collection time in milliseconds
      */
-    public int getFrameNumber() {
-        return frameNumber;
+    public long getCollectTime() {
+        return collectTime;
     }
 
 
     /** Sets the feature for this Token.
-     * @param data*/
+     * @param data features
+     */
     public void setData(Data data) {
-        myData = data;
+        this.data = data;
+        if (data instanceof FloatData) {
+            collectTime = ((FloatData)data).getCollectTime();
+        }
     }
 
 
@@ -149,7 +145,7 @@ public class Token implements Scoreable {
      * @return the feature for this Token
      */
     public Data getData() {
-        return myData;
+        return data;
     }
 
 
@@ -197,28 +193,6 @@ public class Token implements Scoreable {
         logAcousticScore -= maxLogScore;
         return logTotalScore;
     }
-
-
-    /**
-     * Gets the working score. The working score is used to maintain non-final
-     * scores during the search. Some search algorithms such as bushderby use
-     * the working score
-     * 
-     * @return the working score (in logMath log base)
-     */
-    public float getWorkingScore() {
-        return logWorkingScore;
-    }
-
-    /**
-     * Sets the working score for this token
-     *
-     * @param logScore the working score (in logMath log base)
-     */
-    public void setWorkingScore(float logScore) {
-        logWorkingScore = logScore;
-    }
-
 
     /**
      * Sets the score for this token
@@ -313,11 +287,11 @@ public class Token implements Scoreable {
     @Override
     public String toString() {
         return
-            numFmt.format(getFrameNumber()) + ' ' +
+            numFmt.format(getCollectTime()) + ' ' +
             scoreFmt.format(getScore()) + ' ' +
             scoreFmt.format(getAcousticScore()) + ' ' +
             scoreFmt.format(getLanguageScore()) + ' ' +
-            getSearchState() + (tokenProps == null ? "" : " " + tokenProps);
+            getSearchState();
     }
 
 
@@ -462,27 +436,6 @@ public class Token implements Scoreable {
 
 
     /**
-     * Returns the location of this Token in the ActiveList. In the HeapActiveList implementation, it is the index of
-     * the Token in the array backing the heap.
-     *
-     * @return the location of this Token in the ActiveList
-     */
-    public final int getLocation() {
-        return location;
-    }
-
-
-    /**
-     * Sets the location of this Token in the ActiveList.
-     *
-     * @param location the location of this Token
-     */
-    public final void setLocation(int location) {
-        this.location = location;
-    }
-
-
-    /**
      * Determines if this branch is valid
      *
      * @return true if the token and its predecessors are valid
@@ -511,16 +464,14 @@ public class Token implements Scoreable {
         return numFmt;
     }
 
-
-    /**
-     * Returns the application object
-     *
-     * @return the application object
-     */
-    public synchronized Map<String, Object> getTokenProps() {
-        if (tokenProps == null)
-            tokenProps = new HashMap<String, Object>();
-
-        return tokenProps;
+    public void update(Token predecessor, SearchState nextState,
+            float logEntryScore, float insertionProbability,
+            float languageProbability, long collectTime) {
+        this.predecessor = predecessor;
+        this.searchState = nextState;
+        this.logTotalScore = logEntryScore;
+        this.logInsertionScore = insertionProbability;
+        this.logLanguageScore = languageProbability;
+        this.collectTime = collectTime;
     }
 }

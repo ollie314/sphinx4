@@ -8,6 +8,7 @@
  */
 package edu.cmu.sphinx.linguist.dictionary;
 
+import static org.testng.AssertJUnit.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
@@ -26,28 +27,25 @@ public class DictionaryTest {
     @Test
     public void testDictionary() throws IOException {
         URL dictUrl = getClass()
-                .getResource("/edu/cmu/sphinx/models/acoustic/wsj/dict/digits.dict");
+                .getResource("/edu/cmu/sphinx/models/en-us/cmudict-en-us.dict");
         URL noiseDictUrl = getClass()
-                .getResource("/edu/cmu/sphinx/models/acoustic/wsj/noisedict");
+                .getResource("/edu/cmu/sphinx/models/en-us/en-us/noisedict");
 
-        Dictionary dictionary = new FullDictionary(dictUrl,
+        Dictionary dictionary = new TextDictionary(dictUrl,
                                                    noiseDictUrl,
                                                    null,
-                                                   false,
                                                    null,
-                                                   false,
-                                                   false,
                                                    new UnitManager());
         dictionary.allocate();
         Word word = dictionary.getWord("one");
 
         assertThat(word.getPronunciations(), arrayWithSize(2));
         assertThat(word.getPronunciations()[0].toString(),
-                   equalTo("one(HH W AH N )"));
-        assertThat(word.getPronunciations()[1].toString(),
                    equalTo("one(W AH N )"));
+        assertThat(word.getPronunciations()[1].toString(),
+                   equalTo("one(HH W AH N )"));
 
-        word = dictionary.getWord("something");
+        word = dictionary.getWord("something_missing");
         assertThat(word, nullValue());
 
         assertThat(dictionary.getSentenceStartWord().getSpelling(),
@@ -56,6 +54,27 @@ public class DictionaryTest {
                    equalTo("</s>"));
         assertThat(dictionary.getSilenceWord().getSpelling(), equalTo("<sil>"));
 
-        assertThat(dictionary.getFillerWords(), arrayWithSize(12));
+        assertThat(dictionary.getFillerWords(), arrayWithSize(5));
     }
+    
+    @Test
+    public void testBadDictionary() throws IOException {
+        URL dictUrl = getClass()
+                .getResource("/edu/cmu/sphinx/linguist/dictionary/bad.dict");
+        URL noiseDictUrl = getClass()
+                .getResource("/edu/cmu/sphinx/models/en-us/en-us/noisedict");
+
+        Dictionary dictionary = new TextDictionary(dictUrl,
+                                                   noiseDictUrl,
+                                                   null,
+                                                   null,
+                                                   new UnitManager());
+        boolean failed = false;
+        try {
+            dictionary.allocate();
+        } catch (Error e) {
+            failed = true;
+        }
+        assertTrue(failed);
+   }
 }

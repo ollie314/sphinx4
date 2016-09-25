@@ -42,8 +42,9 @@ public class PhoneLoop {
      * Creates an PhoneLoop
      *
      * @param model                        the acoustic model
-     *                                     probability of branching to this graph
+     * @param logOutOfGrammarBranchProbability probability of branching to this graph
      * @param logPhoneInsertionProbability probability of inserting a phone
+     * @param toGrammarSearchState target search state
      */
     public PhoneLoop(AcousticModel model,
                              float logOutOfGrammarBranchProbability,
@@ -391,8 +392,6 @@ public class PhoneLoop {
 			return hmmState.getScore(feature);
 		}
 
-
-		@Override
 		public float[] getComponentScore(Data feature) {
 			return hmmState.calculateComponentScore(feature);
 		}

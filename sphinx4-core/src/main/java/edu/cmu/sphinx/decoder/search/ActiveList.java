@@ -17,7 +17,7 @@ import edu.cmu.sphinx.util.props.*;
 
 /**
  * An active list is maintained as a sorted list
- * <p/>
+ * <p>
  * Note that all scores are represented in LogMath logbase
  */
 public interface ActiveList extends Iterable<Token> {
@@ -51,16 +51,6 @@ public interface ActiveList extends Iterable<Token> {
      * @param token the token to add
      */
     public void add(Token token);
-
-
-    /**
-     * Replaces an old token with a new token
-     *
-     * @param oldToken the token to replace (or null in which case, replace works like add).
-     * @param newToken the new token to be placed in the list.
-     */
-    public void replace(Token oldToken, Token newToken);
-
 
     /**
      * Purges the active list of excess members returning a (potentially new) active list

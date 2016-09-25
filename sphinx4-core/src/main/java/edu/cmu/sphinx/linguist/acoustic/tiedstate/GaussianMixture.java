@@ -20,7 +20,7 @@ import edu.cmu.sphinx.util.LogMath;
 /**
  * Represents a concrete implementation of a simple {@link Senone senone}. A simple senone is a set of probability
  * density functions implemented as a Gaussian mixture.
- * <p/>
+ * <p>
  * All scores and weights are maintained in LogMath log base.
  */
 
@@ -29,27 +29,26 @@ public class GaussianMixture extends ScoreCachingSenone {
 
     // these data element in a senone may be shared with other senones
     // and therefore should not be written to.
-    private float[] logMixtureWeights;
+    protected GaussianWeights mixtureWeights;
     private MixtureComponent[] mixtureComponents;
-    private long id;
+    protected int id;
 
-    private LogMath logMath;
+    protected LogMath logMath;
 
 
     /**
      * Creates a new senone from the given components.
      *
-     * @param logMixtureWeights the mixture weights for this senone in LogMath log base
+     * @param mixtureWeights the mixture weights for this senone in LogMath log base
      * @param mixtureComponents the mixture components for this senone
+     * @param id id of the mixture
      */
-    public GaussianMixture(float[] logMixtureWeights,
-                           MixtureComponent[] mixtureComponents, long id) {
-
-        assert mixtureComponents.length == logMixtureWeights.length;
+    public GaussianMixture(GaussianWeights mixtureWeights,
+                           MixtureComponent[] mixtureComponents, int id) {
 
         logMath = LogMath.getLogMath();
         this.mixtureComponents = mixtureComponents;
-        this.logMixtureWeights = logMixtureWeights;
+        this.mixtureWeights = mixtureWeights;
         this.id = id;
     }
 
@@ -122,7 +121,7 @@ public class GaussianMixture extends ScoreCachingSenone {
             //
             // Total += Mixture[i].score * MixtureWeight[i]
             logTotal = logMath.addAsLinear(logTotal,
-                    mixtureComponents[i].getScore(featureVector) + logMixtureWeights[i]);
+                    mixtureComponents[i].getScore(featureVector) + mixtureWeights.get(id, 0, i));
         }
 
         return logTotal;
@@ -146,7 +145,7 @@ public class GaussianMixture extends ScoreCachingSenone {
             // In linear form, this would be:
             //
             // Total += Mixture[i].score * MixtureWeight[i]
-            logComponentScore[i] = mixtureComponents[i].getScore(featureVector) + logMixtureWeights[i];
+            logComponentScore[i] = mixtureComponents[i].getScore(featureVector) + mixtureWeights.get(id, 0, i);
         }
 
         return logComponentScore;
@@ -171,7 +170,10 @@ public class GaussianMixture extends ScoreCachingSenone {
 
 
     public float[] getLogMixtureWeights(){
-    	return this.logMixtureWeights;
+        float[] logWeights = new float[getMixtureComponents().length];
+        for (int i = 0; i < logWeights.length; i++)
+            logWeights[i] = mixtureWeights.get(id, 0, i);
+        return logWeights;
     }
     
 
@@ -179,15 +181,16 @@ public class GaussianMixture extends ScoreCachingSenone {
     public float[] getComponentWeights() {
         float[] mixWeights = new float[getMixtureComponents().length];
         for (int i = 0; i < mixWeights.length; i++)
-            mixWeights[i] = (float) logMath.logToLinear(logMixtureWeights[i]);
+            mixWeights[i] = (float) logMath.logToLinear(mixtureWeights.get(id, 0, i));
 
         return mixWeights;
     }
 
     /**
+     * @param index of the component
      * @return the (log-scaled) mixture weight of the component density
      * <code>index</code> */
     public float getLogComponentWeight(int index) {
-        return logMixtureWeights[index];
+        return mixtureWeights.get(id, 0, index);
     }
 }

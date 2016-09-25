@@ -269,7 +269,7 @@ public class KaldiLoader implements Loader {
     /**
      * Not implemented.
      */
-    public Pool<float[]> getMixtureWeightPool() {
+    public GaussianWeights getMixtureWeights() {
         return null;
     }
 
@@ -287,7 +287,6 @@ public class KaldiLoader implements Loader {
         return transform;
     }
 
-    @Override
     public void update(Transform transform, ClusteredDensityFileData clusters) {
         // TODO Not implemented yet
     }

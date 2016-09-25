@@ -20,7 +20,7 @@ import java.io.IOException;
  * Provides a command line utility to convert a java binary fst model to
  * openfst's text format
  * 
- * @author John Salatas <jsalatas@users.sourceforge.net>
+ * @author John Salatas
  */
 public class Export {
     /**
@@ -35,11 +35,12 @@ public class Export {
      * - basename.input.syms
      * - basename.output.syms
      * - basename.fst.txt
-     * 
-     * @param args[0] the java binary model filename 
-     * @param args[1] openfst's files basename
-     * @throws IOException 
-     * @throws ClassNotFoundException 
+     * First argument is the java binary model filename, second
+     * argument openfst's files basename
+     *
+     * @param args arguments
+     * @throws IOException IO went wrong
+     * @throws ClassNotFoundException loading failed due to failed serialization
      */
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         if (args.length < 2) {

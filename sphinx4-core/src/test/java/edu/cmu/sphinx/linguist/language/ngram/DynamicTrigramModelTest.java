@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 import edu.cmu.sphinx.linguist.WordSequence;
 import edu.cmu.sphinx.linguist.acoustic.UnitManager;
 import edu.cmu.sphinx.linguist.dictionary.Dictionary;
-import edu.cmu.sphinx.linguist.dictionary.FullDictionary;
+import edu.cmu.sphinx.linguist.dictionary.TextDictionary;
 
 
 public class DynamicTrigramModelTest {
@@ -33,14 +33,14 @@ public class DynamicTrigramModelTest {
         URL dictUrl =
                 getClass()
                         .getResource(
-                                "/edu/cmu/sphinx/models/acoustic/wsj/dict/digits.dict");
+                                "/edu/cmu/sphinx/models/en-us/cmudict-en-us.dict");
         URL noiseDictUrl =
                 getClass().getResource(
-                        "/edu/cmu/sphinx/models/acoustic/wsj/noisedict");
+                        "/edu/cmu/sphinx/models/en-us/en-us/noisedict");
 
         dictionary =
-                new FullDictionary(dictUrl, noiseDictUrl, null, false, null,
-                        false, false, new UnitManager());
+                new TextDictionary(dictUrl, noiseDictUrl, null, null,
+                                   new UnitManager());
         dictionary.allocate();
     }
 
@@ -51,7 +51,7 @@ public class DynamicTrigramModelTest {
         model.allocate();
         assertThat(model.getVocabulary(), contains("one"));
         assertThat(model.getProbability(new WordSequence(dictionary
-                .getWord("one"))), equalTo(getLogMath().linearToLog(1)));
+                .getWord("one"))), equalTo(getLogMath().linearToLog(1.0/3)));
     }
 
     @Test

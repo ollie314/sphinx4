@@ -78,7 +78,7 @@ public interface Loader extends Configurable {
      *
      * @return the pool
      */
-    public Pool<float[]> getMixtureWeightPool();
+    public GaussianWeights getMixtureWeights();
 
     /**
      * Gets the transition matrix pool.
@@ -133,12 +133,14 @@ public interface Loader extends Configurable {
     public int getRightContextSize();
     
     /**
-     * Returns the model properties
+     * @return the model properties
      */
     public Properties getProperties();
 
     /**
      * Apply the transform
+     * @param transform transform to apply to the model
+     * @param clusters transform clusters
      */
     public void update(Transform transform, ClusteredDensityFileData clusters);
 }

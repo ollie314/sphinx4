@@ -1,6 +1,5 @@
 package edu.cmu.sphinx.demo.speakerid;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -17,14 +16,14 @@ import edu.cmu.sphinx.util.TimeFrame;
 public class SpeakerIdentificationDemo {
 
     /**
-     * Returns string version of the given time in miliseconds
+     * Returns string version of the given time in milliseconds
      * 
-     * @param seconds
+     * @param milliseconds time in milliseconds
      * @return time in format mm:ss
      */
-    public static String time(int seconds) {
-        return (seconds / 60000) + ":"
-                + (Math.round((double) (seconds % 60000) / 1000));
+    public static String time(int milliseconds) {
+        return (milliseconds / 60000) + ":"
+                + (Math.round((double) (milliseconds % 60000) / 1000));
     }
 
     /**
@@ -32,11 +31,11 @@ public class SpeakerIdentificationDemo {
      * @param speakers
      *            An array of clusters for which it is needed to be printed the
      *            speakers intervals
-     * @throws IOException
+     * @param fileName
+     *            THe name of file we are processing
      */
     public static void printSpeakerIntervals(
-            ArrayList<SpeakerCluster> speakers, String fileName)
-            throws IOException {
+            ArrayList<SpeakerCluster> speakers, String fileName) {
         int idx = 0;
         for (SpeakerCluster spk : speakers) {
             idx++;
@@ -55,7 +54,7 @@ public class SpeakerIdentificationDemo {
      *            with diarization.
      * @param url
      *            Url for the audio
-     * @throws Exception
+     * @throws Exception if something went wrong
      */
     public static void speakerAdaptiveDecoding(ArrayList<SpeakerCluster> speakers,
             URL url) throws Exception {
@@ -64,11 +63,11 @@ public class SpeakerIdentificationDemo {
 
         // Load model from the jar
         configuration
-                .setAcousticModelPath("resource:/edu/cmu/sphinx/models/acoustic/wsj");
+                .setAcousticModelPath("resource:/edu/cmu/sphinx/models/en-us/en-us");
         configuration
-                .setDictionaryPath("resource:/edu/cmu/sphinx/models/acoustic/wsj/dict/cmudict.0.6d");
+                .setDictionaryPath("resource:/edu/cmu/sphinx/models/en-us/cmudict-en-us.dict");
         configuration
-                .setLanguageModelPath("resource:/edu/cmu/sphinx/models/language/en-us.lm.dmp");
+                .setLanguageModelPath("resource:/edu/cmu/sphinx/models/en-us/en-us.lm.bin");
 
         StreamSpeechRecognizer recognizer = new StreamSpeechRecognizer(
                 configuration);

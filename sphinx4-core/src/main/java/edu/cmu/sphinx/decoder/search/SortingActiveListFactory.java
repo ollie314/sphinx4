@@ -24,9 +24,8 @@ import java.util.List;
  */
 public class SortingActiveListFactory extends ActiveListFactory {
     /**
-     * @param absoluteBeamWidth
-     * @param relativeBeamWidth
-     * @param logMath
+     * @param absoluteBeamWidth absolute pruning beam
+     * @param relativeBeamWidth relative pruning beam
      */
     public SortingActiveListFactory(int absoluteBeamWidth,
             double relativeBeamWidth)
@@ -63,9 +62,9 @@ public class SortingActiveListFactory extends ActiveListFactory {
     /**
      * An active list that tries to be simple and correct. This type of active list will be slow, but should exhibit
      * correct behavior. Faster versions of the ActiveList exist (HeapActiveList, TreeActiveList).
-     * <p/>
+     * <p>
      * This class is not thread safe and should only be used by a single thread.
-     * <p/>
+     * <p>
      * Note that all scores are maintained in the LogMath log base.
      */
 
@@ -80,9 +79,12 @@ public class SortingActiveListFactory extends ActiveListFactory {
         private List<Token> tokenList;
 
 
-        /** Creates an empty active list
-         * @param absoluteBeamWidth
-         * @param logRelativeBeamWidth*/
+        /** 
+         * Creates an empty active list
+         * 
+         * @param absoluteBeamWidth beam for absolute pruning
+         * @param logRelativeBeamWidth beam for relative pruning
+         */
         public SortingActiveList(int absoluteBeamWidth, float logRelativeBeamWidth) {
             this.absoluteBeamWidth = absoluteBeamWidth;
             this.logRelativeBeamWidth = logRelativeBeamWidth;
@@ -98,41 +100,11 @@ public class SortingActiveListFactory extends ActiveListFactory {
          * @param token the token to add
          */
         public void add(Token token) {
-            token.setLocation(tokenList.size());
             tokenList.add(token);
             if (bestToken == null || token.getScore() > bestToken.getScore()) {
                 bestToken = token;
             }
         }
-
-
-        /**
-         * Replaces an old token with a new token
-         *
-         * @param oldToken the token to replace (or null in which case, replace works like add).
-         * @param newToken the new token to be placed in the list.
-         */
-        public void replace(Token oldToken, Token newToken) {
-            if (oldToken != null) {
-                int location = oldToken.getLocation();
-                // just a sanity check:
-                if (tokenList.get(location) != oldToken) {
-                    System.out.println("SortingActiveList: replace " + oldToken
-                            + " not where it should have been.  New "
-                            + newToken + " location is " + location + " found "
-                            + tokenList.get(location));
-                }
-                tokenList.set(location, newToken);
-                newToken.setLocation(location);
-                if (bestToken == null
-                        || newToken.getScore() > bestToken.getScore()) {
-                    bestToken = newToken;
-                }
-            } else {
-                add(newToken);
-            }
-        }
-
 
         /**
          * Purges excess members. Reduce the size of the token list to the absoluteBeamWidth

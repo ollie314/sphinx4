@@ -31,30 +31,41 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Provides the breadth first search. To perform recognition an application should call initialize before recognition
- * begins, and repeatedly call <code> recognize </code> until Result.isFinal() returns true. Once a final result has
- * been obtained, <code> stopRecognition </code> should be called.
- * <p/>
+ * Provides the breadth first search. To perform recognition an application
+ * should call initialize before recognition begins, and repeatedly call
+ * <code> recognize </code> until Result.isFinal() returns true. Once a final
+ * result has been obtained, <code> stopRecognition </code> should be called.
+ * <p>
  * All scores and probabilities are maintained in the log math log domain.
  */
 
 public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
 
-    /** The property that defines the name of the linguist to be used by this search manager. */
+    /**
+     * The property that defines the name of the linguist to be used by this
+     * search manager.
+     */
     @S4Component(type = Linguist.class)
     public final static String PROP_LINGUIST = "linguist";
 
-    /** The property that defines the name of the linguist to be used by this search manager. */
+    /**
+     * The property that defines the name of the linguist to be used by this
+     * search manager.
+     */
     @S4Component(type = Pruner.class)
     public final static String PROP_PRUNER = "pruner";
 
-    /** The property that defines the name of the scorer to be used by this search manager. */
+    /**
+     * The property that defines the name of the scorer to be used by this
+     * search manager.
+     */
     @S4Component(type = AcousticScorer.class)
     public final static String PROP_SCORER = "scorer";
 
     /**
-     * The property than, when set to <code>true</code> will cause the recognizer to count up all the tokens in the
-     * active list after every frame.
+     * The property than, when set to <code>true</code> will cause the
+     * recognizer to count up all the tokens in the active list after every
+     * frame.
      */
     @S4Boolean(defaultValue = false)
     public final static String PROP_SHOW_TOKEN_COUNT = "showTokenCount";
@@ -84,8 +95,9 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
     public final static String PROP_MAX_LATTICE_EDGES = "maxLatticeEdges";
 
     /**
-     * The property that controls the amount of simple acoustic lookahead performed. Setting the property to zero
-     * (the default) disables simple acoustic lookahead. The lookahead need not be an integer.
+     * The property that controls the amount of simple acoustic lookahead
+     * performed. Setting the property to zero (the default) disables simple
+     * acoustic lookahead. The lookahead need not be an integer.
      */
     @S4Double(defaultValue = 0)
     public final static String PROP_ACOUSTIC_LOOKAHEAD_FRAMES = "acousticLookaheadFrames";
@@ -98,70 +110,68 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
     // -----------------------------------
     // Configured Subcomponents
     // -----------------------------------
-    private Linguist linguist; // Provides grammar/language info
-    private Pruner pruner; // used to prune the active list
-    private AcousticScorer scorer; // used to score the active list
+    protected Linguist linguist; // Provides grammar/language info
+    protected Pruner pruner; // used to prune the active list
+    protected AcousticScorer scorer; // used to score the active list
     private ActiveListManager activeListManager;
-    private LogMath logMath;
+    protected LogMath logMath;
 
     // -----------------------------------
     // Configuration data
     // -----------------------------------
-    private Logger logger;
-    private boolean showTokenCount;
-    private boolean checkStateOrder;
+    protected Logger logger;
+    protected boolean showTokenCount;
+    protected boolean checkStateOrder;
     private int growSkipInterval;
-    private float relativeBeamWidth;
-    private float acousticLookaheadFrames;
+    protected float relativeBeamWidth;
+    protected float acousticLookaheadFrames;
     private int maxLatticeEdges = 100;
 
     // -----------------------------------
     // Instrumentation
     // -----------------------------------
-    private Timer scoreTimer;
-    private Timer pruneTimer;
-    private Timer growTimer;
-    private StatisticsVariable totalTokensScored;
-    private StatisticsVariable curTokensScored;
-    private StatisticsVariable tokensCreated;
+    protected Timer scoreTimer;
+    protected Timer pruneTimer;
+    protected Timer growTimer;
+    protected StatisticsVariable totalTokensScored;
+    protected StatisticsVariable curTokensScored;
+    protected StatisticsVariable tokensCreated;
     private long tokenSum;
     private int tokenCount;
 
     // -----------------------------------
     // Working data
     // -----------------------------------
-    private int currentFrameNumber; // the current frame number
+    protected int currentFrameNumber; // the current frame number
+    protected long currentCollectTime; // the current frame number
     protected ActiveList activeList; // the list of active tokens
-    private List<Token> resultList; // the current set of results
-    protected Map<Object, Token> bestTokenMap;
-    private AlternateHypothesisManager loserManager;
+    protected List<Token> resultList; // the current set of results
+    protected Map<SearchState, Token> bestTokenMap;
+    protected AlternateHypothesisManager loserManager;
     private int numStateOrder;
     // private TokenTracker tokenTracker;
     // private TokenTypeTracker tokenTypeTracker;
-    private boolean streamEnd;
+    protected boolean streamEnd;
 
     /**
-     * 
-     * @param linguist
-     * @param pruner
-     * @param scorer
-     * @param activeListManager
-     * @param showTokenCount
-     * @param relativeWordBeamWidth
-     * @param growSkipInterval
-     * @param checkStateOrder
-     * @param buildWordLattice
-     * @param maxLatticeEdges
-     * @param acousticLookaheadFrames
-     * @param keepAllTokens
+     * Creates a pruning manager withs separate lists for tokens
+     * @param linguist a linguist for search space
+     * @param pruner pruner to drop tokens
+     * @param scorer scorer to estimate token probability
+     * @param activeListManager active list manager to store tokens
+     * @param showTokenCount show count during decoding
+     * @param relativeWordBeamWidth relative beam for lookahead pruning
+     * @param growSkipInterval skip interval for grown
+     * @param checkStateOrder check order of states during growth
+     * @param buildWordLattice build a lattice during decoding
+     * @param maxLatticeEdges max edges to keep in lattice
+     * @param acousticLookaheadFrames frames to do lookahead
+     * @param keepAllTokens keep tokens including emitting tokens
      */
-    public WordPruningBreadthFirstSearchManager(Linguist linguist, Pruner pruner,
-                                           AcousticScorer scorer, ActiveListManager activeListManager,
-                                           boolean showTokenCount, double relativeWordBeamWidth,
-                                           int growSkipInterval,
-                                           boolean checkStateOrder, boolean buildWordLattice,
-                                           int maxLatticeEdges, float acousticLookaheadFrames,
-                                           boolean keepAllTokens) {
+    public WordPruningBreadthFirstSearchManager(Linguist linguist, Pruner pruner, AcousticScorer scorer,
+            ActiveListManager activeListManager, boolean showTokenCount, double relativeWordBeamWidth, int growSkipInterval,
+            boolean checkStateOrder, boolean buildWordLattice, int maxLatticeEdges, float acousticLookaheadFrames,
+            boolean keepAllTokens) {
 
         this.logger = Logger.getLogger(getClass().getName());
         this.logMath = LogMath.getLogMath();
@@ -181,18 +191,20 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
     }
 
     public WordPruningBreadthFirstSearchManager() {
-        
+
     }
 
     /*
-    * (non-Javadoc)
-    *
-    * @see edu.cmu.sphinx.util.props.Configurable#newProperties(edu.cmu.sphinx.util.props.PropertySheet)
-    */
+     * (non-Javadoc)
+     * 
+     * @see
+     * edu.cmu.sphinx.util.props.Configurable#newProperties(edu.cmu.sphinx.util
+     * .props.PropertySheet)
+     */
     @Override
     public void newProperties(PropertySheet ps) throws PropertyException {
         super.newProperties(ps);
-        
+
         logMath = LogMath.getLogMath();
         logger = ps.getLogger();
 
@@ -210,12 +222,11 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         relativeBeamWidth = logMath.linearToLog(ps.getDouble(PROP_RELATIVE_BEAM_WIDTH));
     }
 
-
     /*
-    * (non-Javadoc)
-    *
-    * @see edu.cmu.sphinx.decoder.search.SearchManager#allocate()
-    */
+     * (non-Javadoc)
+     * 
+     * @see edu.cmu.sphinx.decoder.search.SearchManager#allocate()
+     */
     public void allocate() {
         // tokenTracker = new TokenTracker();
         // tokenTypeTracker = new TokenTypeTracker();
@@ -237,14 +248,13 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         }
     }
 
-
     /*
-    * (non-Javadoc)
-    *
-    * @see edu.cmu.sphinx.decoder.search.SearchManager#deallocate()
-    */
+     * (non-Javadoc)
+     * 
+     * @see edu.cmu.sphinx.decoder.search.SearchManager#deallocate()
+     */
     public void deallocate() {
-	try {
+        try {
             scorer.deallocate();
             pruner.deallocate();
             linguist.deallocate();
@@ -253,8 +263,10 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         }
     }
 
-
-    /** Called at the start of recognition. Gets the search manager ready to recognize */
+    /**
+     * Called at the start of recognition. Gets the search manager ready to
+     * recognize
+     */
     public void startRecognition() {
         linguist.startRecognition();
         pruner.startRecognition();
@@ -262,11 +274,11 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         localStart();
     }
 
-
     /**
      * Performs the recognition for the given number of frames.
-     *
-     * @param nFrames the number of frames to recognize
+     * 
+     * @param nFrames
+     *            the number of frames to recognize
      * @return the current result
      */
     public Result recognize(int nFrames) {
@@ -277,10 +289,10 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         for (int i = 0; i < nFrames && !done; i++) {
             done = recognize();
         }
-        
+
         if (!streamEnd) {
-        	result = new Result(loserManager, activeList,
-                                resultList, currentFrameNumber, done, linguist.getSearchGraph().getWordTokenFirst());
+            result = new Result(loserManager, activeList, resultList, currentCollectTime, done, linguist.getSearchGraph()
+                    .getWordTokenFirst(), true);
         }
 
         // tokenTypeTracker.show();
@@ -290,7 +302,7 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         return result;
     }
 
-    private boolean recognize() {
+    protected boolean recognize() {
 
         activeList = activeListManager.getEmittingList();
         boolean more = scoreTokens();
@@ -298,7 +310,7 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         if (more) {
             pruneBranches();
             currentFrameNumber++;
-            if (growSkipInterval == 0 || (currentFrameNumber % growSkipInterval) != 0) {            	
+            if (growSkipInterval == 0 || (currentFrameNumber % growSkipInterval) != 0) {
                 clearCollectors();
                 growEmittingBranches();
                 growNonEmittingBranches();
@@ -310,12 +322,11 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
     /**
      * Clears lists and maps before next expansion stage
      */
-	private void clearCollectors() {
-		resultList = new LinkedList<Token>();
-		createBestTokenMap();
-		activeListManager.clearEmittingList();
-	}
-
+    private void clearCollectors() {
+        resultList = new LinkedList<Token>();
+        createBestTokenMap();
+        activeListManager.clearEmittingList();
+    }
 
     /**
      * creates a new best token map with the best size
@@ -325,9 +336,8 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         if (mapSize == 0) {
             mapSize = 1;
         }
-        bestTokenMap = new HashMap<Object, Token>(mapSize, 0.3F);
+        bestTokenMap = new HashMap<SearchState, Token>(mapSize, 0.3F);
     }
-
 
     /** Terminates a recognition */
     public void stopRecognition() {
@@ -337,8 +347,10 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         linguist.stopRecognition();
     }
 
-
-    /** Gets the initial grammar node from the linguist and creates a GrammarNodeToken */
+    /**
+     * Gets the initial grammar node from the linguist and creates a
+     * GrammarNodeToken
+     */
     protected void localStart() {
         SearchGraph searchGraph = linguist.getSearchGraph();
         currentFrameNumber = 0;
@@ -352,35 +364,32 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         SearchState state = searchGraph.getInitialState();
 
         activeList = activeListManager.getEmittingList();
-        activeList.add(new Token(state, currentFrameNumber));
-        
+        activeList.add(new Token(state, -1));
+
         clearCollectors();
-        
+
         growBranches();
         growNonEmittingBranches();
         // tokenTracker.setEnabled(false);
         // tokenTracker.startUtterance();
     }
 
-
     /** Local cleanup for this search manager */
     protected void localStop() {
         // tokenTracker.stopUtterance();
     }
 
-
     /**
-     * Goes through the active list of tokens and expands each token, finding the set of successor tokens until all the
-     * successor tokens are emitting tokens.
+     * Goes through the active list of tokens and expands each token, finding
+     * the set of successor tokens until all the successor tokens are emitting
+     * tokens.
      */
     protected void growBranches() {
         growTimer.start();
         float relativeBeamThreshold = activeList.getBeamThreshold();
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine("Frame: " + currentFrameNumber
-                    + " thresh : " + relativeBeamThreshold + " bs "
-                    + activeList.getBestScore() + " tok "
-                    + activeList.getBestToken());
+            logger.fine("Frame: " + currentFrameNumber + " thresh : " + relativeBeamThreshold + " bs "
+                    + activeList.getBestScore() + " tok " + activeList.getBestToken());
         }
         for (Token token : activeList) {
             if (token.getScore() >= relativeBeamThreshold && allowExpansion(token)) {
@@ -390,38 +399,34 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         growTimer.stop();
     }
 
-
     /**
-     * Grows the emitting branches. This version applies a simple acoustic lookahead based upon the rate of change in
-     * the current acoustic score.
+     * Grows the emitting branches. This version applies a simple acoustic
+     * lookahead based upon the rate of change in the current acoustic score.
      */
     protected void growEmittingBranches() {
-        if (acousticLookaheadFrames > 0F) {
-            growTimer.start();
-            float bestScore = -Float.MAX_VALUE;
-            for (Token t : activeList) {
-                float score = t.getScore() + t.getAcousticScore()
-                        * acousticLookaheadFrames;
-                if (score > bestScore) {
-                    bestScore = score;
-                }
-                t.setWorkingScore(score);
-            }
-            float relativeBeamThreshold = bestScore + relativeBeamWidth;
-
-            for (Token t : activeList) {
-                if (t.getWorkingScore() >= relativeBeamThreshold) {
-                    collectSuccessorTokens(t);
-                }
-            }
-            growTimer.stop();
-        } else {
+        if (acousticLookaheadFrames <= 0.0f) {
             growBranches();
+            return;
         }
+        growTimer.start();
+        float bestScore = -Float.MAX_VALUE;
+        for (Token t : activeList) {
+            float score = t.getScore() + t.getAcousticScore() * acousticLookaheadFrames;
+            if (score > bestScore) {
+                bestScore = score;
+            }
+        }
+        float relativeBeamThreshold = bestScore + relativeBeamWidth;
+        for (Token t : activeList) {
+            if (t.getScore() + t.getAcousticScore() * acousticLookaheadFrames > relativeBeamThreshold)
+                collectSuccessorTokens(t);
+        }
+        growTimer.stop();
     }
 
-
-    /** Grow the non-emitting branches, until the tokens reach an emitting state. */
+    /**
+     * Grow the non-emitting branches, until the tokens reach an emitting state.
+     */
     private void growNonEmittingBranches() {
         for (Iterator<ActiveList> i = activeListManager.getNonEmittingListIterator(); i.hasNext();) {
             activeList = i.next();
@@ -433,11 +438,12 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         }
     }
 
-
     /**
-     * Calculate the acoustic scores for the active list. The active list should contain only emitting tokens.
-     *
-     * @return <code>true</code> if there are more frames to score, otherwise, false
+     * Calculate the acoustic scores for the active list. The active list should
+     * contain only emitting tokens.
+     * 
+     * @return <code>true</code> if there are more frames to score, otherwise,
+     *         false
      */
     protected boolean scoreTokens() {
         boolean moreTokens;
@@ -447,15 +453,19 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
 
         Token bestToken = null;
         if (data instanceof Token) {
-            bestToken = (Token)data;
+            bestToken = (Token) data;
         } else if (data == null) {
             streamEnd = true;
         }
- 
+
+        if (bestToken != null) {
+            currentCollectTime = bestToken.getCollectTime();
+        }
+        
         moreTokens = (bestToken != null);
         activeList.setBestToken(bestToken);
 
-        //monitorWords(activeList);
+        // monitorWords(activeList);
         monitorStates(activeList);
 
         // System.out.println("BEST " + bestToken);
@@ -466,53 +476,55 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         return moreTokens;
     }
 
-
     /**
-     * Keeps track of and reports all of the active word histories for the given active list
-     *
-     * @param activeList the active list to track
+     * Keeps track of and reports all of the active word histories for the given
+     * active list
+     * 
+     * @param activeList
+     *            the active list to track
      */
     @SuppressWarnings("unused")
     private void monitorWords(ActiveList activeList) {
 
-//        WordTracker tracker1 = new WordTracker(currentFrameNumber);
-//
-//        for (Token t : activeList) {
-//            tracker1.add(t);
-//        }
-//        tracker1.dump();
-//        
-//        TokenTracker tracker2 = new TokenTracker();
-//
-//        for (Token t : activeList) {
-//            tracker2.add(t);
-//        }
-//        tracker2.dumpSummary();
-//        tracker2.dumpDetails();
-//        
-//        TokenTypeTracker tracker3 = new TokenTypeTracker();
-//
-//        for (Token t : activeList) {
-//            tracker3.add(t);
-//        }
-//        tracker3.dump();
+        // WordTracker tracker1 = new WordTracker(currentFrameNumber);
+        //
+        // for (Token t : activeList) {
+        // tracker1.add(t);
+        // }
+        // tracker1.dump();
+        //
+        // TokenTracker tracker2 = new TokenTracker();
+        //
+        // for (Token t : activeList) {
+        // tracker2.add(t);
+        // }
+        // tracker2.dumpSummary();
+        // tracker2.dumpDetails();
+        //
+        // TokenTypeTracker tracker3 = new TokenTypeTracker();
+        //
+        // for (Token t : activeList) {
+        // tracker3.add(t);
+        // }
+        // tracker3.dump();
 
-//        StateHistoryTracker tracker4 = new StateHistoryTracker(currentFrameNumber);
+        // StateHistoryTracker tracker4 = new
+        // StateHistoryTracker(currentFrameNumber);
 
-//        for (Token t : activeList) {
-//            tracker4.add(t);
-//        }
-//        tracker4.dump();
+        // for (Token t : activeList) {
+        // tracker4.add(t);
+        // }
+        // tracker4.dump();
     }
-
 
     /**
      * Keeps track of and reports statistics about the number of active states
-     *
-     * @param activeList the active list of states
+     * 
+     * @param activeList
+     *            the active list of states
      */
-    private void monitorStates(ActiveList activeList) {        
-        
+    protected void monitorStates(ActiveList activeList) {
+
         tokenSum += activeList.size();
         tokenCount++;
 
@@ -521,7 +533,6 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         }
     }
 
-
     /** Removes unpromising branches from the active list */
     protected void pruneBranches() {
         pruneTimer.start();
@@ -529,82 +540,54 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         pruneTimer.stop();
     }
 
-
     /**
      * Gets the best token for this state
-     *
-     * @param state the state of interest
+     * 
+     * @param state
+     *            the state of interest
      * @return the best token
      */
     protected Token getBestToken(SearchState state) {
-        Object key = getStateKey(state);
-        return bestTokenMap.get(key);
+        return bestTokenMap.get(state);
     }
-
 
     /**
      * Sets the best token for a given state
-     *
-     * @param token the best token
-     * @param state the state
+     * 
+     * @param token
+     *            the best token
+     * @param state
+     *            the state
      */
     protected void setBestToken(Token token, SearchState state) {
-        Object key = getStateKey(state);
-        bestTokenMap.put(key, token);
+        bestTokenMap.put(state, token);
     }
 
     /**
-     * Returns the state key for the given state. This key is used
-     * to store bestToken into the bestToken map. All tokens with 
-     * the same key are basically shared. This method adds flexibility in
-     * search. 
+     * Checks that the given two states are in legitimate order.
      * 
-     * For example this key will allow HMM states that have identical word 
-     * histories and are in the same HMM state to be treated equivalently. 
-     * When used  as the best token key, only the best scoring token with a 
-     * given word history survives per HMM. 
-     * <pre>
-     *   boolean equal = hmmSearchState.getLexState().equals(
-     *          other.hmmSearchState.getLexState())
-     *          && hmmSearchState.getWordHistory().equals(
-     *          other.hmmSearchState.getWordHistory());                       
-     * </pre>
-     * 
-     * @param state
-     *            the state to get the key for
-     * @return the key for the given state
+     * @param fromState parent state
+     * @param toState child state
      */
-    protected Object getStateKey(SearchState state) {
-        return state;
-    }
-    
-
-    /** Checks that the given two states are in legitimate order.
-     * @param fromState
-     * @param toState*/
-    private void checkStateOrder(SearchState fromState, SearchState toState) {
+    protected void checkStateOrder(SearchState fromState, SearchState toState) {
         if (fromState.getOrder() == numStateOrder - 1) {
             return;
         }
 
         if (fromState.getOrder() > toState.getOrder()) {
-            throw new Error("IllegalState order: from "
-                    + fromState.getClass().getName() + ' '
-                    + fromState.toPrettyString()
-                    + " order: " + fromState.getOrder()
-                    + " to "
-                    + toState.getClass().getName() + ' '
-                    + toState.toPrettyString()
+            throw new Error("IllegalState order: from " + fromState.getClass().getName() + ' ' + fromState.toPrettyString()
+                    + " order: " + fromState.getOrder() + " to " + toState.getClass().getName() + ' ' + toState.toPrettyString()
                     + " order: " + toState.getOrder());
         }
     }
 
-
     /**
-     * Collects the next set of emitting tokens from a token and accumulates them in the active or result lists
-     *
-     * @param token the token to collect successors from be immediately expanded are placed. Null if we should always
-     *              expand all nodes.
+     * Collects the next set of emitting tokens from a token and accumulates
+     * them in the active or result lists
+     * 
+     * @param token
+     *            the token to collect successors from be immediately expanded
+     *            are placed. Null if we should always expand all nodes.
      */
     protected void collectSuccessorTokens(Token token) {
 
@@ -618,7 +601,7 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
             return;
         }
 
-        // if this is a non-emitting token and we've already 
+        // if this is a non-emitting token and we've already
         // visited the same state during this frame, then we
         // are in a grammar loop, so we don't continue to expand.
         // This check only works properly if we have kept all of the
@@ -656,50 +639,38 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
             float logEntryScore = token.getScore() + arc.getProbability();
 
             Token bestToken = getBestToken(nextState);
-            boolean firstToken = bestToken == null;
 
-            if (firstToken || bestToken.getScore() < logEntryScore) {
-                Token newBestToken = new Token(predecessor, nextState,
-                        logEntryScore, 
-                        arc.getInsertionProbability(),
-                        arc.getLanguageProbability(), 
-                        currentFrameNumber);
+            if (bestToken == null) {
+                Token newBestToken = new Token(predecessor, nextState, logEntryScore, arc.getInsertionProbability(),
+                        arc.getLanguageProbability(), currentCollectTime);
                 tokensCreated.value++;
-
                 setBestToken(newBestToken, nextState);
-                if (firstToken) {
-                    activeListAdd(newBestToken);
-                } else {
-//                    System.out.println("Replacing " + bestToken + " with " + newBestToken);
-                    activeListReplace(bestToken, newBestToken);
-                    if (buildWordLattice && newBestToken.isWord()) {
-
-                        // Move predecessors of bestToken to precede
-                        // newBestToken, bestToken will be garbage collected.
-                        loserManager.changeSuccessor(newBestToken, bestToken);
-                        loserManager.addAlternatePredecessor(newBestToken,
-                                bestToken.getPredecessor());
-                    }
-                }
-            } else {
+                activeListAdd(newBestToken);
+            } else if (bestToken.getScore() < logEntryScore) {
+                // System.out.println("Updating " + bestToken + " with " +
+                // newBestToken);
+                Token oldPredecessor = bestToken.getPredecessor();
+                bestToken.update(predecessor, nextState, logEntryScore, arc.getInsertionProbability(),
+                        arc.getLanguageProbability(), currentCollectTime);
                 if (buildWordLattice && nextState instanceof WordSearchState) {
-                    if (predecessor != null) {
-                        loserManager.addAlternatePredecessor(bestToken,
-                                predecessor);
-                    }
+                    loserManager.addAlternatePredecessor(bestToken, oldPredecessor);
+                }
+            } else if (buildWordLattice && nextState instanceof WordSearchState) {
+                if (predecessor != null) {
+                    loserManager.addAlternatePredecessor(bestToken, predecessor);
                 }
             }
         }
     }
 
-
     /**
-     * Determines whether or not we've visited the state associated with this token since the previous frame.
-     *
-     * @param t
+     * Determines whether or not we've visited the state associated with this
+     * token since the previous frame.
+     * 
+     * @param t token to check
      * @return true if we've visited the search state since the last frame
      */
-    private boolean isVisited(Token t) {
+    protected boolean isVisited(Token t) {
         SearchState curState = t.getSearchState();
 
         t = t.getPredecessor();
@@ -714,30 +685,26 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
         return false;
     }
 
-
     protected void activeListAdd(Token token) {
         activeListManager.add(token);
     }
 
-
-    protected void activeListReplace(Token old, Token newToken) {
-        activeListManager.replace(old, newToken);
-    }
-
-
     /**
      * Determine if the given token should be expanded
-     *
-     * @param t the token to test
+     * 
+     * @param t
+     *            the token to test
      * @return <code>true</code> if the token should be expanded
      */
     protected boolean allowExpansion(Token t) {
         return true; // currently disabled
     }
 
-
-    /** Counts all the tokens in the active list (and displays them). This is an expensive operation. */
-    private void showTokenCount() {
+    /**
+     * Counts all the tokens in the active list (and displays them). This is an
+     * expensive operation.
+     */
+    protected void showTokenCount() {
         Set<Token> tokenSet = new HashSet<Token>();
 
         for (Token token : activeList) {
@@ -763,67 +730,63 @@ public class WordPruningBreadthFirstSearchManager extends TokenSearchManager {
 
     /**
      * Returns the ActiveList.
-     *
+     * 
      * @return the ActiveList
      */
     public ActiveList getActiveList() {
         return activeList;
     }
 
-
     /**
      * Sets the ActiveList.
-     *
-     * @param activeList the new ActiveList
+     * 
+     * @param activeList
+     *            the new ActiveList
      */
     public void setActiveList(ActiveList activeList) {
         this.activeList = activeList;
     }
 
-
     /**
      * Returns the result list.
-     *
+     * 
      * @return the result list
      */
     public List<Token> getResultList() {
         return resultList;
     }
 
-
     /**
      * Sets the result list.
-     *
-     * @param resultList the new result list
+     * 
+     * @param resultList
+     *            the new result list
      */
     public void setResultList(List<Token> resultList) {
         this.resultList = resultList;
     }
 
-
     /**
      * Returns the current frame number.
-     *
+     * 
      * @return the current frame number
      */
     public int getCurrentFrameNumber() {
         return currentFrameNumber;
     }
 
-
     /**
      * Returns the Timer for growing.
-     *
+     * 
      * @return the Timer for growing
      */
     public Timer getGrowTimer() {
         return growTimer;
     }
 
-
     /**
      * Returns the tokensCreated StatisticsVariable.
-     *
+     * 
      * @return the tokensCreated StatisticsVariable.
      */
     public StatisticsVariable getTokensCreated() {

@@ -21,7 +21,7 @@ import edu.cmu.sphinx.fst.semiring.TropicalSemiring;
  * Provides a command line utility to convert an Fst in openfst's text format to
  * java binary fst model
  * 
- * @author John Salatas <jsalatas@users.sourceforge.net>
+ * @author John Salatas
  */
 public class Import {
 
@@ -35,11 +35,12 @@ public class Import {
      * Imports an openfst text format and serializes it as java binary model
      * Several files are imported as follows: - basename.input.syms -
      * basename.output.syms - basename.fst.txt
-     * 
-     * @param args[0] openfst's files basename
-     * @param args[1] the java binary model filename
-     * @throws IOException 
-     * @throws NumberFormatException 
+     * First argument is the java binary model filename, second
+     * argument openfst's files basename
+     *
+     * @param args arguments
+     * @throws IOException IO went wrong
+     * @throws NumberFormatException data has wrong input format
      */
     public static void main(String[] args) throws NumberFormatException, IOException {
         if (args.length < 2) {

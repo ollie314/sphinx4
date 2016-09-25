@@ -138,7 +138,6 @@ public class LongTextAligner {
 
             final Map<Node, Integer> cost = new HashMap<Node, Integer>();
             PriorityQueue<Node> openSet = new PriorityQueue<Node>(1, new Comparator<Node>() {
-                @Override
                 public int compare(Node o1, Node o2) {
                     return cost.get(o1).compareTo(cost.get(o2));
                 }
@@ -240,6 +239,7 @@ public class LongTextAligner {
 
     /**
      * Aligns query sequence with the previously built database.
+     * @param query list of words to look for
      *
      * @return indices of alignment
      */
@@ -249,6 +249,8 @@ public class LongTextAligner {
 
     /**
      * Aligns query sequence with the previously built database.
+     * @param words list words to look for
+     * @param range range of database to look for alignment
      *
      * @return indices of alignment
      */
